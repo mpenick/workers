@@ -163,7 +163,7 @@ struct SemWorker : public ThreadWorker {
     }
 
     bool was_pending = false;
-    if (pending.compare_exchange_strong(was_pending, true) && !was_pending) {
+    if (pending.compare_exchange_strong(was_pending, true)) {
       uv_sem_post(&sem);
     }
 #else
@@ -179,10 +179,12 @@ struct SemWorker : public ThreadWorker {
 
 #ifdef USE_PENDING
       bool was_pending = true;
-      if (pending.compare_exchange_strong(was_pending, false) && !was_pending) {
+      if (!pending.compare_exchange_strong(was_pending, false)) {
         continue;
       }
 #endif
+      assert(was_pending && "It was supposed to be pending");
+
       while (queue.dequeue(value)) {
         //printf("%d %p\n", value, (void*)uv_thread_self());
         if (value ==  (uint64_t)-1) {
